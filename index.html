@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Aegyptus Incognita</title>
+  <meta name="description" content="Un friso egipcio que sigue el Nilo de Abu Simbel al mar, con un gato negro y diez secretos escondidos.">
+  <meta name="author" content="Pau Morató Sebastià">
+  <meta name="theme-color" content="#f7e2b8">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Aegyptus Incognita">
+  <meta property="og:description" content="Un friso egipcio que sigue el Nilo de Abu Simbel al mar, con un gato negro y diez secretos escondidos. Navega, escribe con el cálamo, toca… y encuéntralos.">
+  <meta property="og:url" content="https://explore-aegyptus-incognita.github.io/">
+  <meta property="og:image" content="https://explore-aegyptus-incognita.github.io/compartir.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+  <div class="cargando" id="cargando" aria-live="polite"><span class="cargando-sol" aria-hidden="true"></span><span>Moliendo el azul egipcio…</span></div>
+  <canvas id="lienzo" aria-label="Un friso egipcio pintado que sigue el Nilo. Desliza para navegar y arrastra para escribir con el cálamo."></canvas>
+  <div class="grano" id="grano" aria-hidden="true"></div>
+  <div class="vineta" aria-hidden="true"></div>
+
+  <header class="marca">
+    <h1 class="titulo">Aegyptus <em><span class="pre">in</span>cognita</em></h1>
+    <p class="sub" id="sub"><span class="jero">𓆎𓅓𓏏𓊖</span> · La tierra negra</p>
+  </header>
+
+  <!-- arriba a la derecha: el sonido y el papiro, a la misma altura; debajo, en táctil, qué hace el dedo -->
+  <div class="botones" id="botones">
+    <button class="b-sonido" id="b-sonido" type="button" aria-pressed="false" aria-label="Sonido" title="Sonido">♪</button>
+    <button class="b-cuaderno" id="b-cuaderno" type="button" aria-expanded="false" aria-controls="cuaderno">
+      <span class="b-fila"><span class="b-etq"><span class="jero">𓏞</span> Secretos</span><span class="b-cont" id="contador">00/10</span></span>
+      <span class="segmentos" id="segmentos" aria-hidden="true"></span>
+    </button>
+    <!-- en táctil: mover el friso o escribir con el cálamo (y una línea que dice qué hace el dedo) -->
+    <div class="modo" id="modo" hidden>
+      <div class="modo-botones" role="group" aria-label="Qué hace el dedo">
+        <button type="button" class="m-boton" id="modo-mover" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 15.3V6a1.5 1.5 0 0 1 3 0v5.5M11.5 11V4.5a1.5 1.5 0 0 1 3 0V11M14.5 11V6a1.5 1.5 0 0 1 3 0v5.5M17.5 12V8.5a1.5 1.5 0 0 1 3 0V15a6.5 6.5 0 0 1-6.5 6.5h-1.6a6 6 0 0 1-4.4-1.9l-3.4-3.7a1.6 1.6 0 0 1 2.3-2.2l1.6 1.6"/></svg>Mover</button>
+        <button type="button" class="m-boton" id="modo-escribir" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l1.6-4.6L16.2 4.8a2.1 2.1 0 0 1 3 3L8.6 18.4ZM5.6 15.4l3 3M13 20.5h7"/></svg>Escribir</button>
+      </div>
+      <p class="modo-ayuda" id="modo-ayuda"></p>
+    </div>
+  </div>
+
+  <div class="hud hud-izq" id="hud" aria-hidden="true">
+    <div><span>Lugar</span><b id="h-lugar">Abu Simbel</b></div>
+    <div><span>Hora</span><b id="h-hora">1.ª del día</b></div>
+    <div><span>Ka <i class="jero">𓂓</i></span><b class="barras" id="h-ka"><i></i><i></i><i></i><i></i><i></i></b></div>
+  </div>
+  <div class="hud hud-der" id="ayuda"><span>Rueda: navegar</span> <span>Arrastra: escribir</span></div>
+  <div class="teclas" id="teclas" aria-hidden="true"></div>
+
+  <!-- el mapa del Nilo: dónde estás y, con un clic o arrastrando, ir a otra parte (mientras se arrastra, el nombre del sitio) -->
+  <div class="mapa" id="mapa" aria-label="Posición en el Nilo"><span class="mapa-area" aria-hidden="true"></span><i id="mapa-ventana"></i><span class="mapa-nombre" id="mapa-nombre" aria-hidden="true"></span></div>
+
+  <aside class="cuaderno" id="cuaderno" aria-hidden="true" aria-labelledby="cuaderno-titulo">
+    <div class="c-cabeza">
+      <div>
+        <p class="c-etq"><span class="jero">𓏞</span> · Papiro del escriba</p>
+        <h2 id="cuaderno-titulo">Los secretos del Nilo</h2>
+      </div>
+      <button class="c-cerrar" id="cerrar-cuaderno" type="button" aria-label="Cerrar el papiro">✕</button>
+    </div>
+    <p class="c-intro" id="c-intro"></p>
+    <ol class="lista" id="lista"></ol>
+    <p class="c-fuentes">Letras: Instrument Serif e IBM Plex Mono. Jeroglíficos: Noto Sans Egyptian Hieroglyphs (todas, OFL). El friso, el gato y las escenas están dibujados por código.</p>
+    <p class="c-credito" id="c-credito-linea" hidden>Un juego de <a id="c-credito" target="_blank" rel="noopener"><b id="c-credito-nombre"></b><span class="flecha"> ↗</span></a></p>
+    <div class="c-pie">
+      <button type="button" id="ver-final" class="c-boton" hidden>Ver el final otra vez</button>
+      <button type="button" id="borrar" class="c-boton c-boton-tenue">Borrar progreso</button>
+    </div>
+  </aside>
+
+  <section class="tarjeta" id="tarjeta" aria-live="polite">
+    <div class="t-jero jero" id="t-jero" aria-hidden="true"></div>
+    <div class="t-cuerpo">
+      <div class="t-etq"><span id="t-etq"></span><span class="t-pausa" aria-hidden="true">En pausa</span></div>
+      <h2 class="t-tit" id="t-tit"></h2>
+      <p class="t-txt" id="t-txt"></p>
+      <div class="t-pie" id="t-pie"></div>
+    </div>
+  </section>
+
+  <div class="aviso" id="aviso" role="status"></div>
+  <button class="saltar" id="saltar" type="button">Saltar <kbd>Esc</kbd></button>
+
+  <div class="intro" id="intro" hidden>
+    <div class="intro-caja">
+      <canvas class="intro-marca" id="intro-ankh" aria-hidden="true"></canvas>
+      <h2>Aegyptus <em>incognita</em></h2>
+      <p class="intro-sub"><span class="jero">𓆎𓅓𓏏𓊖</span> · La tierra negra</p>
+      <p class="intro-txt" id="intro-txt">Este friso sigue el Nilo de Abu Simbel al mar y esconde <span class="n-secretos">diez</span> secretos. Navega, toca, mira de cerca, escribe con el cálamo, teclea… o quédate quieto. Te acompaña un gato negro. Lo que encuentres quedará anotado en el papiro del escriba.</p>
+      <button type="button" id="empezar">Navegar el Nilo</button>
+    </div>
+  </div>
+
+  <!-- créditos: salen al terminar el final (los diez secretos) -->
+  <div class="creditos" id="creditos" hidden role="dialog" aria-modal="true" aria-labelledby="creditos-nombre">
+    <div class="creditos-caja">
+      <p class="creditos-etq">Friso pintado por</p>
+      <h2 class="creditos-nombre" id="creditos-nombre"></h2>
+      <div class="creditos-linea" aria-hidden="true"></div>
+      <p class="creditos-txt">Gracias por navegar el Nilo hasta el mar.</p>
+      <div class="creditos-botones">
+        <a class="creditos-enlace" id="creditos-enlace" target="_blank" rel="noopener">Ver su LinkedIn <span aria-hidden="true">↗</span></a>
+        <button type="button" class="creditos-cerrar" id="creditos-cerrar">Seguir explorando</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/motor.js"></script>
+  <script src="js/estilo.js"></script>
+  <script src="js/arte-monumentos-sur.js"></script>
+  <script src="js/arte-monumentos-norte.js"></script>
+  <script src="js/arte-figuras.js"></script>
+  <script src="js/arte-naturaleza.js"></script>
+  <script src="js/arte-gato.js"></script>
+  <script src="js/arte-detalles.js"></script>
+  <script src="js/nilo.js"></script>
+  <script src="js/gato.js"></script>
+  <script src="js/escena.js"></script>
+  <script src="js/interfaz.js"></script>
+  <script src="js/huevos/01-abu-simbel.js"></script>
+  <script src="js/huevos/02-filae.js"></script>
+  <script src="js/huevos/03-eratostenes.js"></script>
+  <script src="js/huevos/04-hatshepsut.js"></script>
+  <script src="js/huevos/05-tutankamon.js"></script>
+  <script src="js/huevos/06-gran-vacio.js"></script>
+  <script src="js/huevos/07-esfinge.js"></script>
+  <script src="js/huevos/08-miu.js"></script>
+  <script src="js/huevos/09-rosetta.js"></script>
+  <script src="js/huevos/10-faro.js"></script>
+  <script src="js/huevos/final.js"></script>
+  <script src="js/sonido.js"></script>
+  <script src="js/inicio.js"></script>
+</body>
+</html>
