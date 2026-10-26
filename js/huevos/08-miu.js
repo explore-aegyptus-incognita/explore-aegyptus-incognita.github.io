@@ -8,7 +8,7 @@
   var PALABRA = '𓏇𓇋𓅱𓃠';   // mjw: W19, la jarra de leche en su red (mj); M17, el junco (j, complemento fonético); G43, el pollito de codorniz (w), y E13, el gato sentado (determinativo)
   var buffer = '';
   AE.registrar({
-    id: 'miu', n: 8, nombre: 'Miu', jero: PALABRA, tipo: 'Teclado',
+    id: 'miu', n: 8, nombre: 'Miu', jero: PALABRA, tipo: 'Teclado', tipoTactil: 'Toque',   // (en el móvil no hay teclado: se llama tocándolo)
     pista: '¿Cómo llamaban los egipcios al gato? Llámalo tú.',
     detectar: function (api) {
       api.en('tecla', function (d) {
@@ -16,14 +16,30 @@
         buffer = (buffer + d.key.toLowerCase()).slice(-6);
         if (/(mi+a*u|mi+w|mjw|ma+u)$/.test(buffer)) { buffer = ''; api.disparar(); }
       });
-      // tocar al gato: contesta; y en una pantalla táctil, donde no hay teclado, llamarlo es tocarlo tres veces seguidas
-      var toques = [];
+      // tocar al gato: contesta; y en una pantalla táctil, donde no hay teclado, llamarlo es tocarlo tres veces seguidas.
+      // Cada toque se ve (sin sonido no pasaba nada): levanta las orejas y te mira, y sale un pulso de oro con tantas
+      // estrellitas como toques llevas
+      var toques = [], respuestas = [];
       api.en('clic', function (d) {
         var G = AE.gatoCtl, Em = api.motor; if (!G || G.oculto || !G.cerca(d.x, d.y)) return;
-        G.despertar(); AE.sonido.tocar('miau');
-        if (Em.puntero.tipo === 'mouse') return;
+        G.responder(); AE.sonido.tocar('miau');
+        if (Em.puntero.tipo === 'mouse') { respuestas.push({ t: Em.t, n: 1 }); return; }
         toques = toques.filter(function (q) { return Em.t - q < 1800; }); toques.push(Em.t);
+        respuestas.push({ t: Em.t, n: Math.min(3, toques.length) });
         if (toques.length >= 3) { toques = []; api.disparar(); }
+      });
+      api.brillo(function (ctx, t) {
+        var G = AE.gatoCtl, Em = api.motor; respuestas = respuestas.filter(function (r) { return t - r.t < 1000; });
+        if (!G || !respuestas.length) return;
+        var s = Em.u, gx = G.x() + G.dir * s * 0.02, gy = G.y() - s * 0.13 * 0.8;
+        respuestas.forEach(function (r) {
+          var k = (t - r.t) / 1000, a = 1 - k * k;
+          FX.halo(gx, gy, s * (0.05 + 0.07 * U.sale(k)), [255, 214, 120], 0.55 * a, ctx);
+          for (var i = 0; i < r.n; i++) {
+            var an = -Math.PI / 2 + (i - (r.n - 1) / 2) * 0.6, rr = s * (0.065 + 0.03 * U.sale(k));
+            ctx.save(); ctx.globalAlpha = a; ES.estrella(ctx, gx + Math.cos(an) * rr, gy + Math.sin(an) * rr - k * s * 0.015, s * 0.014, 0); ctx.fillStyle = 'rgb(255,214,110)'; ctx.fill(); ctx.restore();
+          }
+        });
       });
     },
     escena: function (E) {
@@ -50,15 +66,6 @@
           var kh = U.meseta(t, 600, 1800, 13800, 15200);
           FX.halo(gx, gy - s * 0.07, s * 0.16, [255, 214, 120], 0.45 * kh);
           X.polvo(ctx, gx, gy - s * 0.08, s * 0.12, 14, kh, t, 13);
-          // la palabra, signo a signo, en un recuadro de papiro sobre el gato, con la transliteración debajo
-          var kp = U.meseta(t, 1600, 2400, 13600, 15000); if (kp > 0) {
-            var bw = s * 0.36, bh = s * 0.16, bx = U.clamp(gx - bw / 2, s * 0.05, E.W - bw - s * 0.05), by = E.sy(0.2);
-            X.panel(ctx, bx, by, bw, bh, kp, function (x0, y0, w, h) {
-              X.fila(ctx, PALABRA, x0 + w / 2, y0 + h * 0.42, h * 0.46, U.tramo(t, 2400, 5200), P.tinta, 1, 'center');
-              var sonidos = ['mj', '(j)', 'w', '(gato)'];   // (W19 mj, M17 j —repite la j, no suena—, G43 w y el determinativo)
-              FX.texto(sonidos.slice(0, Math.ceil(U.tramo(t, 2400, 5200) * 4)).join(' · '), x0 + w / 2, y0 + h * 0.84, { tam: Math.max(10, s * 0.013), alin: 'center', a: kp, espaciado: 2, color: P.lapis });
-            });
-          }
           // la fila de gatos negros que pasa por arriba, de izquierda a derecha, sobre su línea de registro (por debajo
           // del título y por encima del recuadro)
           var kf = U.tramo(t, 3000, 3600) * (1 - U.tramo(t, 13600, 14600)), g = AE.gato; if (kf <= 0 || !g) return;
@@ -71,6 +78,18 @@
             var fase = (dist / zan + i * 0.37) % 1;
             ctx.save(); ctx.globalAlpha = kf; try { g.dibujar(ctx, x, y + h, h, g.andar(fase, 0.2), { mirada: 0, orejas: 0.6 }); } catch (err) { } ctx.restore();
           }
+        },
+        // la palabra, signo a signo, en un recuadro de papiro sobre el gato, con la transliteración debajo (sin tinte: el
+        // gato contesta en cualquier sitio, también de noche)
+        luz: function (ctx, t) {
+          var s = E.u, gx = G ? G.x() : E.W / 2;
+          var kp = U.meseta(t, 1600, 2400, 13600, 15000); if (kp <= 0) return;
+          var bw = s * 0.36, bh = s * 0.16, bx = U.clamp(gx - bw / 2, s * 0.05, E.W - bw - s * 0.05), by = E.sy(0.2);
+          X.panel(ctx, bx, by, bw, bh, kp, function (x0, y0, w, h) {
+            X.fila(ctx, PALABRA, x0 + w / 2, y0 + h * 0.42, h * 0.46, U.tramo(t, 2400, 5200), P.tinta, 1, 'center');
+            var sonidos = ['mj', '(j)', 'w', '(gato)'];   // (W19 mj, M17 j —repite la j, no suena—, G43 w y el determinativo)
+            FX.texto(sonidos.slice(0, Math.ceil(U.tramo(t, 2400, 5200) * 4)).join(' · '), x0 + w / 2, y0 + h * 0.84, { tam: Math.max(10, s * 0.013), alin: 'center', a: kp, espaciado: 2, color: P.lapis });
+          });
         },
         sinBarcas: true,   // (el gato es el protagonista: que ninguna vela pase por delante)
         fin: function () { if (G) G.soltar(); }

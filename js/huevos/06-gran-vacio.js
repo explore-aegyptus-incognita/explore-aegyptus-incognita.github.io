@@ -36,7 +36,8 @@
           en: 9000, hasta: 16600 + L,
           titulo: 'El Gran Vacío',
           texto: 'En 2017, el proyecto ScanPyramids anunció en <i>Nature</i> el hallazgo de un enorme hueco de al menos 30\u00a0metros sobre la Gran Galería. Lo detectaron con muones, partículas que nacen cuando los rayos cósmicos chocan con la atmósfera y que atraviesan la piedra. En 2023 confirmaron que detrás de los bloques a dos aguas de la entrada hay un pasillo de unos 9\u00a0metros, y lo vieron por dentro con un endoscopio. Para qué se hicieron el hueco y el pasillo, nadie lo sabe aún.',
-          pie: 'Guiza · Keops (Jufu) · ScanPyramids, 2017 y 2023'
+          pie: 'Guiza · Keops (Jufu) · ScanPyramids, 2017 y 2023',
+          lado: 'derecha'   // (a la izquierda tapaba la pirámide, con los muones y los bloques de la entrada brillando)
         },
         inicio: function () {
           // la pirámide a la izquierda de la pantalla, para que quepa la viñeta del corte a la derecha
@@ -58,11 +59,14 @@
           // los chevrones de la entrada, donde se hizo clic, brillan
           var z = entrada(), late = 0.7 + 0.3 * Math.sin(t * 0.006);
           if (z) { FX.halo(z.x, z.y, z.w * 1.4, [140, 230, 255], 0.7 * k * late); X.polvo(ctx, z.x, z.y, z.w, 8, k, t, 6); }
-          // la viñeta: el corte norte–sur, con sus proporciones (el norte, con la entrada, a la izquierda)
+        },
+        // la viñeta, sin el tinte del atardecer: el corte norte–sur, con sus proporciones (el norte, con la entrada, a la
+        // izquierda). En escritorio acaba en 0,40 u: la tarjeta va debajo, a la derecha, y su halo no la tiene que cubrir
+        luz: function (ctx, t) {
+          var s = E.u, late = 0.7 + 0.3 * Math.sin(t * 0.006);
           var kp = U.meseta(t, 2400, 3400, 16200, 17400); if (kp <= 0) return;
-          // (en escritorio acaba en 0,52 u: por debajo se ve la cabeza del gato, sentado a su lado)
-          var estrecha = E.W < 700, ph = estrecha ? s * 0.42 : s * 0.46, pw = estrecha ? E.W - s * 0.08 : Math.min(E.W * 0.5, ph * 1.3);
-          var px = estrecha ? s * 0.04 : E.W - pw - s * 0.05, py = estrecha ? E.sy(0.08) : E.sy(0.06), etq = Math.max(9, s * 0.0115);
+          var estrecha = E.W < 700, ph = estrecha ? s * 0.42 : s * 0.35, pw = estrecha ? E.W - s * 0.08 : Math.min(E.W * 0.5, ph * 1.3);
+          var px = estrecha ? s * 0.04 : E.W - pw - s * 0.05, py = estrecha ? E.sy(0.08) : E.sy(0.05), etq = Math.max(9, s * 0.0115);
           X.panel(ctx, px, py, pw, ph, kp, function (x0, y0, w, h) {
             ctx.fillStyle = ES.lin(ctx, 0, y0, 0, y0 + h, [[0, [24, 40, 96]], [1, [12, 20, 56]]]); ctx.fillRect(x0, y0, w, h);
             // la escala: que quepan la base (230 m) a lo ancho y, a lo alto, de la punta (146,6 m) a la cámara subterránea (−31 m)

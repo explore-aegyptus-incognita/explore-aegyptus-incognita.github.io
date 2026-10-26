@@ -51,6 +51,7 @@
       x.drawImage(cv, 0, 0);
       teselas(E.capaDelante); tinte('tinte-mundo');
       x.drawImage(E.lienzoBrillo, 0, 0, c.width, c.height);
+      if (E.lienzoLuz && E.lienzoLuz.style.display !== 'none' && E.lienzoLuz.width > 1) x.drawImage(E.lienzoLuz, 0, 0, c.width, c.height);
       return c;
     }
   };

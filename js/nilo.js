@@ -685,11 +685,21 @@
     var h = N.horaAhora(), L = luzDe(h);
     N.noche = nocheDe(h);
     E.tinte('fondo', cssMult(L.fondo)); E.tinte('mundo', cssMult(L.mundo));
+    tenirCartelas(L.mundo);
     document.documentElement.classList.toggle('noche', N.noche > 0.55);
     actualizarVida(dt);
     var quiere = E.escena && E.escena.s && E.escena.s.sinBarcas ? 0 : 1; veloBarcas += (quiere - veloBarcas) * (1 - Math.exp(-dt / 220));
     if (AE.gatoCtl) AE.gatoCtl.actualizar(dt);
   };
+  // el papiro de las cartelas de la interfaz (los instrumentos, el mapa, los botones de arriba, el título) sigue la luz: al
+  // amanecer y al atardecer toma el 30 % del tinte del mundo (si no, sobre el friso morado relucían como pegatinas; con más,
+  // el texto pequeño no llegaba al contraste mínimo). De noche manda la clase .noche (el azul de los techos de las tumbas)
+  var cartelaAntes = '';
+  function tenirCartelas(mun) {
+    var k = 0.3, c = [249, 234, 202].map(function (v, j) { return Math.round(v * (1 - k + k * mun[j] / 255) / 2) * 2; }), clave = c.join(', ');
+    if (clave === cartelaAntes) return; cartelaAntes = clave;
+    document.documentElement.style.setProperty('--luz-papiro', clave);
+  }
   N.dibujar = function (ctx) {
     lugares = lugaresPendientes();
     dibujarAgua(ctx);

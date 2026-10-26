@@ -24,16 +24,19 @@
         inicio: function () { E.irA(E.largo, 1600); if (G) G.forzar({ xu: (p ? p.xu : 17.2) - 0.55, estado: 'sentado' }); AE.sonido.tocar('faro'); },
         cuadro: function (t) {
           X.hora(t, 0, 1200, null, 22);
-          // mientras crece, el faro tapa las estrellas que tiene detrás; y la luna se aparta mientras arde el fuego
-          N.tapa = p && d ? { xu: p.xu, ancho: d.ancho, alto: d.alto * U.inOut(U.tramo(t, 1400, 6400)) } : null;
-          N.lunaVelo = U.tramo(t, 5600, 7000) * (1 - U.tramo(t, 15800, 16900));
+          // mientras crece, el faro tapa las estrellas que tiene detrás; y la luna se aparta mientras arde el fuego. El faro
+          // sigue encendido mientras se lee la tarjeta y, al acabar la escena, se funde y vuelven las ruinas (antes se
+          // apagaba a los 17 s y la torre seguía en pie hasta el final, y desaparecía de golpe)
+          var fin = X.salida(t, 2200);
+          N.tapa = p && d && fin > 0.2 ? { xu: p.xu, ancho: d.ancho, alto: d.alto * U.inOut(U.tramo(t, 1400, 6400)) } : null;
+          N.lunaVelo = U.tramo(t, 5600, 7000) * fin;
         },
         frente: function (ctx, t) {
           if (!p || !d) return;
           var s = E.u, cx = E.sx(p.xu), base = E.sy(N.SUELO), alto = d.alto * s, ancho = d.ancho * s;
           // el faro se levanta de abajo arriba sobre sus ruinas (se pinta entero y se recorta por la altura que lleva)
-          var k = U.inOut(U.tramo(t, 1400, 6400)), corte = base - alto * k;
-          ctx.save(); ctx.beginPath(); ctx.rect(cx - ancho, corte, ancho * 2, base - corte + 2); ctx.clip();
+          var k = U.inOut(U.tramo(t, 1400, 6400)), corte = base - alto * k, fin = X.salida(t, 2200); if (fin <= 0.01) return;
+          ctx.save(); ctx.globalAlpha = fin; ctx.beginPath(); ctx.rect(cx - ancho, corte, ancho * 2, base - corte + 2); ctx.clip();
           d.dibujar(ctx, cx, base, s, {});
           ctx.restore();
           // las piedras que suben a su sitio
@@ -45,7 +48,7 @@
         brillo: function (ctx, t) {
           if (!p || !d) return;
           var s = E.u, f = d.fuego || { dx: 0, dy: -d.alto + 0.04 }, fx = E.sx(p.xu + (f.dx || 0)), fy = E.sy(N.SUELO + (f.dy || 0));
-          var kf = U.tramo(t, 6200, 7400) * (1 - U.tramo(t, 15800, 16900)); if (kf <= 0) return;
+          var kf = U.tramo(t, 6200, 7400) * X.salida(t, 2200); if (kf <= 0) return;
           // el fuego: un halo que late y unas llamas
           var late = 0.85 + 0.15 * Math.sin(t * 0.013) * Math.sin(t * 0.007);
           FX.halo(fx, fy, s * 0.22 * late, [255, 190, 90], 0.55 * kf, ctx);
@@ -57,7 +60,6 @@
           }
           // el haz que barre el mar
           var an = Math.sin(t * 0.0009) * 0.9, l = s * 1.4;
-          X.rayo(ctx, fx, fy, fx + Math.cos(Math.PI + an) * l * 0.2 + (an > 0 ? 1 : -1) * 0, fy, 0, 0, [0, 0, 0], 0);
           ctx.save(); ctx.globalAlpha = 0.35 * kf;
           var g = ctx.createLinearGradient(fx, fy, fx - Math.cos(an) * l, fy + Math.sin(Math.abs(an)) * l * 0.1);
           g.addColorStop(0, 'rgba(255,230,170,0.9)'); g.addColorStop(1, 'rgba(255,230,170,0)');

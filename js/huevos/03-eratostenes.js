@@ -33,15 +33,23 @@
         sinBarcas: true,
         frente: function (ctx, t) {
           var z = boca(); if (!z) return;
-          var s = E.u, sol = N.sol(12);
+          var sol = N.sol(12);
           // el sol cae a plomo en el pozo
           var kr = U.meseta(t, 1200, 2200, 17000, 18300);
           X.rayo(ctx, z.x, sol.y + sol.r, z.x, z.y, sol.r * 1.4, z.w * 0.6, [255, 222, 140], kr * 0.45);
           FX.halo(z.x, z.y, z.w * 0.9, [255, 230, 150], kr * (0.6 + 0.2 * Math.sin(t * 0.006)));
-          // dos viñetas: Siena y Alejandría a la misma hora
-          var kp = U.meseta(t, 2600, 3600, 17200, 18400), pw = Math.min(E.W * 0.26, s * 0.42), ph = s * 0.3, py = E.sy(0.12);
+        },
+        // las viñetas, sin tinte: Siena y Alejandría a la misma hora y, en una tercera, el dibujo de Eratóstenes con la cuenta.
+        // El pozo y su rayo quedan libres: las dos primeras van a los lados del rayo y la tercera, a la derecha del pozo (en
+        // una pantalla estrecha, sobre el río). Antes el globo se dibujaba suelto, encima del pozo
+        luz: function (ctx, t) {
+          var z = boca(); if (!z) return;
+          var s = E.u, etq = Math.max(10, s * 0.0115);
+          // (en una pantalla estrecha, la tercera viñeta sustituye a estas dos cuando sale: abajo la taparía la tarjeta)
+          var izq = E.W * 0.5 + s * 0.09, libre = E.W - izq - s * 0.03, estrecha = libre < s * 0.36;
+          var kp = U.meseta(t, 2600, 3600, estrecha ? 6000 : 17200, estrecha ? 6800 : 18400), pw = Math.min(E.W * 0.26, s * 0.42), ph = s * 0.3, py = E.sy(0.12);
           var p1 = E.W * 0.5 - pw - s * 0.03, p2 = E.W * 0.5 + s * 0.03;
-          var rot = ['SIENA', 'ALEJANDRÍA'], etq = Math.max(9, s * 0.0115);
+          var rot = ['SIENA', 'ALEJANDRÍA'];
           [p1, p2].forEach(function (px, i) {
             X.panel(ctx, px, py, pw, ph, kp, function (x0, y0, w, h) {
               var suelo = y0 + h * 0.82, gx = x0 + w * 0.5, alto = h * 0.5;
@@ -66,33 +74,31 @@
               FX.texto(rot[i], x0 + w * 0.05, suelo + (y0 + h - suelo) * 0.5, { tam: etq, color: P.tinta, a: 0.85 * kp, espaciado: 1 });
             });
           });
-          // el dibujo de Eratóstenes: la Tierra, los rayos paralelos y el ángulo en el centro
-          var kd = U.meseta(t, 6400, 7400, 17200, 18400); if (kd <= 0) return;
-          var cx = E.W * (E.W < 700 ? 0.5 : 0.56), cy = E.sy(0.565), R = s * 0.105;
-          var aS = -Math.PI / 2, aA = -Math.PI / 2 + 7.2 * Math.PI / 180 * 3.5;   // (Alejandría, al norte: a la derecha, como en todo el friso; el ángulo, exagerado para que se vea)
-          var pS = [cx + Math.cos(aS) * R, cy + Math.sin(aS) * R], pA = [cx + Math.cos(aA) * R, cy + Math.sin(aA) * R];
-          ctx.save(); ctx.globalAlpha = kd;
-          // la Tierra
-          ctx.fillStyle = ES.rad(ctx, cx, cy, 0, R, [[0, ES.aclarar(P.egipcio, 0.25)], [1, P.lapis2]], cx - R * 0.3, cy - R * 0.3); ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.fill();
-          // los rayos del sol, paralelos, que bajan a las dos ciudades
-          ctx.strokeStyle = U.rgba([214, 140, 30], 0.85); ctx.lineWidth = 1.4;
-          [pS, pA].forEach(function (q) { ctx.beginPath(); ctx.moveTo(q[0], q[1] - R * 0.75); ctx.lineTo(q[0], q[1]); ctx.stroke(); ctx.beginPath(); ctx.moveTo(q[0] - 4, q[1] - 7); ctx.lineTo(q[0], q[1] - 1); ctx.lineTo(q[0] + 4, q[1] - 7); ctx.stroke(); });
-          // los dos radios hasta el centro y el ángulo entre ellos
-          ctx.strokeStyle = U.rgba(P.oro1, 0.95); ctx.lineWidth = 1.6;
-          [pS, pA].forEach(function (q) { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(q[0], q[1]); ctx.stroke(); });
-          ctx.beginPath(); ctx.arc(cx, cy, R * 0.32, aS, aA); ctx.stroke();
-          ctx.fillStyle = U.rgba(P.oro1, 1); ctx.beginPath(); ctx.arc(pS[0], pS[1], 3, 0, TAU); ctx.arc(pA[0], pA[1], 3, 0, TAU); ctx.fill();
-          ctx.restore();
-          FX.texto('7,2°', cx + R * 0.1, cy - R * 0.44, { tam: Math.max(10, s * 0.013), color: P.oro1, a: kd });
-          FX.texto('SIENA', pS[0] - 18, pS[1] + 6, { tam: Math.max(9, s * 0.011), color: P.tinta, a: kd, espaciado: 1.5, alin: 'right' });
-          FX.texto('ALEJANDRÍA', pA[0] + 12, pA[1] + 6, { tam: Math.max(9, s * 0.011), color: P.tinta, a: kd, espaciado: 1.5 });
-          // la cuenta, en una cartela de papiro al lado del globo (en una pantalla estrecha, debajo)
-          var kt = U.tramo(t, 8200, 9400) * kd; if (kt <= 0) return;
-          var estrecha = E.W < 700, cw = estrecha ? E.W - s * 0.1 : s * 0.44, ch = s * (estrecha ? 0.11 : 0.07);
-          var cxp = estrecha ? s * 0.05 : cx + R + s * 0.08, cyp = estrecha ? cy + R + s * 0.03 : cy + R * 0.2 - ch / 2;
-          X.panel(ctx, cxp, cyp, cw, ch, kt, function (x0, y0, w, h) {
-            if (estrecha) { FX.texto('5.000 ESTADIOS × 50', x0 + w / 2, y0 + h * 0.34, { tam: etq, alin: 'center', color: P.lapis, a: kt, espaciado: 1 }); FX.texto('= 250.000', x0 + w / 2, y0 + h * 0.7, { tam: etq, alin: 'center', color: P.lapis, a: kt, espaciado: 1 }); }
-            else FX.texto('5.000 ESTADIOS × 50 = 250.000', x0 + w / 2, y0 + h / 2, { tam: Math.max(10, s * 0.0135), alin: 'center', color: P.lapis, a: kt, espaciado: 1.5 });
+          // la tercera viñeta: la Tierra, los rayos paralelos, el ángulo en el centro y la cuenta
+          var kd = U.meseta(t, estrecha ? 6600 : 6400, estrecha ? 7600 : 7400, 17200, 18400); if (kd <= 0) return;
+          var dw = estrecha ? E.W - s * 0.08 : Math.min(s * 0.46, libre), dh = estrecha ? s * 0.26 : s * 0.195;
+          var dx = estrecha ? s * 0.04 : izq, dy = estrecha ? E.sy(0.14) : E.sy(0.445);
+          X.panel(ctx, dx, dy, dw, dh, kd, function (x0, y0, w, h) {
+            var R = Math.min(h * 0.3, w * 0.17), cx = x0 + R * 1.65, cy = y0 + h * 0.6;
+            var aS = -Math.PI / 2, aA = -Math.PI / 2 + 7.2 * Math.PI / 180 * 3.5;   // (Alejandría, al norte: a la derecha, como en todo el friso; el ángulo, exagerado para que se vea)
+            var pS = [cx + Math.cos(aS) * R, cy + Math.sin(aS) * R], pA = [cx + Math.cos(aA) * R, cy + Math.sin(aA) * R];
+            // la Tierra
+            ctx.fillStyle = ES.rad(ctx, cx, cy, 0, R, [[0, ES.aclarar(P.egipcio, 0.25)], [1, P.lapis2]], cx - R * 0.3, cy - R * 0.3); ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.fill();
+            // los rayos del sol, paralelos, que bajan a las dos ciudades
+            ctx.strokeStyle = U.rgba([214, 140, 30], 0.9); ctx.lineWidth = 1.4;
+            [pS, pA].forEach(function (q) { ctx.beginPath(); ctx.moveTo(q[0], q[1] - R * 0.6); ctx.lineTo(q[0], q[1]); ctx.stroke(); ctx.beginPath(); ctx.moveTo(q[0] - 4, q[1] - 7); ctx.lineTo(q[0], q[1] - 1); ctx.lineTo(q[0] + 4, q[1] - 7); ctx.stroke(); });
+            // los dos radios hasta el centro y el ángulo entre ellos
+            ctx.strokeStyle = U.rgba(P.oro1, 0.95); ctx.lineWidth = 1.6;
+            [pS, pA].forEach(function (q) { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(q[0], q[1]); ctx.stroke(); });
+            ctx.beginPath(); ctx.arc(cx, cy, R * 0.32, aS, aA); ctx.stroke();
+            ctx.fillStyle = U.rgba(P.oro1, 1); ctx.beginPath(); ctx.arc(pS[0], pS[1], 3, 0, TAU); ctx.arc(pA[0], pA[1], 3, 0, TAU); ctx.fill();
+            FX.texto('7,2°', cx + R + 7, cy - R * 0.45, { tam: etq, color: P.lapis, a: kd });   // (fuera del globo, a su derecha: dentro pisaba el radio y, con el globo pequeño de un móvil, se salía y el «°» se perdía)
+            FX.texto('SIENA', pS[0] - 10, pS[1] - R * 0.3, { tam: etq, color: P.tinta, a: kd, espaciado: 1.5, alin: 'right' });
+            FX.texto('ALEJANDRÍA', pA[0] + 10, pA[1] - R * 0.18, { tam: etq, color: P.tinta, a: kd, espaciado: 1.5 });
+            // la cuenta, a la derecha del globo
+            var kt = U.tramo(t, 8200, 9400) * kd, tx = x0 + Math.max(w * 0.56, R * 3.4 + w * 0.12), tam = Math.max(11, s * 0.0135);
+            FX.texto('5.000 ESTADIOS × 50', tx, y0 + h * 0.42, { tam: tam, alin: 'left', color: P.lapis, a: kt, espaciado: 1 });
+            FX.texto('= 250.000 ESTADIOS', tx, y0 + h * 0.42 + tam * 1.9, { tam: tam, alin: 'left', color: P.lapis, a: kt * U.tramo(t, 8800, 9800), espaciado: 1, peso: 600 });
           });
         },
         fin: function () { X.soltarHora(); if (G) G.soltar(); }

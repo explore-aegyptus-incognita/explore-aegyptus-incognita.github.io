@@ -20,7 +20,7 @@
 </head>
 <body>
   <div class="cargando" id="cargando" aria-live="polite"><span class="cargando-sol" aria-hidden="true"></span><span>Moliendo el azul egipcio…</span></div>
-  <canvas id="lienzo" aria-label="Un friso egipcio pintado que sigue el Nilo. Desliza para navegar y arrastra para escribir con el cálamo."></canvas>
+  <canvas id="lienzo" role="img" aria-label="Un friso egipcio pintado que sigue el Nilo. Desliza para navegar y arrastra para escribir con el cálamo."></canvas>
   <div class="grano" id="grano" aria-hidden="true"></div>
   <div class="vineta" aria-hidden="true"></div>
 
@@ -32,8 +32,8 @@
   <!-- arriba a la derecha: el sonido y el papiro, a la misma altura; debajo, en táctil, qué hace el dedo -->
   <div class="botones" id="botones">
     <button class="b-sonido" id="b-sonido" type="button" aria-pressed="false" aria-label="Sonido" title="Sonido">♪</button>
-    <button class="b-cuaderno" id="b-cuaderno" type="button" aria-expanded="false" aria-controls="cuaderno">
-      <span class="b-fila"><span class="b-etq"><span class="jero">𓏞</span> Secretos</span><span class="b-cont" id="contador">00/10</span></span>
+    <button class="b-cuaderno" id="b-cuaderno" type="button" aria-expanded="false" aria-controls="cuaderno" aria-label="Secretos">
+      <span class="b-fila"><span class="b-etq"><span class="jero" aria-hidden="true">𓏞</span> Secretos</span><span class="b-cont" id="contador">00/10</span></span>
       <span class="segmentos" id="segmentos" aria-hidden="true"></span>
     </button>
     <!-- en táctil: mover el friso o escribir con el cálamo (y una línea que dice qué hace el dedo) -->
@@ -55,9 +55,9 @@
   <div class="teclas" id="teclas" aria-hidden="true"></div>
 
   <!-- el mapa del Nilo: dónde estás y, con un clic o arrastrando, ir a otra parte (mientras se arrastra, el nombre del sitio) -->
-  <div class="mapa" id="mapa" aria-label="Posición en el Nilo"><span class="mapa-area" aria-hidden="true"></span><i id="mapa-ventana"></i><span class="mapa-nombre" id="mapa-nombre" aria-hidden="true"></span></div>
+  <div class="mapa" id="mapa" role="slider" tabindex="0" aria-label="Posición en el Nilo" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="Abu Simbel"><span class="mapa-area" aria-hidden="true"></span><i id="mapa-ventana"></i><span class="mapa-nombre" id="mapa-nombre" aria-hidden="true"></span></div>
 
-  <aside class="cuaderno" id="cuaderno" aria-hidden="true" aria-labelledby="cuaderno-titulo">
+  <aside class="cuaderno" id="cuaderno" aria-hidden="true" inert aria-labelledby="cuaderno-titulo">
     <div class="c-cabeza">
       <div>
         <p class="c-etq"><span class="jero">𓏞</span> · Papiro del escriba</p>
@@ -65,6 +65,9 @@
       </div>
       <button class="c-cerrar" id="cerrar-cuaderno" type="button" aria-label="Cerrar el papiro">✕</button>
     </div>
+    <!-- lo que se desplaza: todo menos la cabecera (en una pantalla baja, la nota de las fuentes fija abajo dejaba sitio
+         para una entrada o menos) -->
+    <div class="c-desliza" id="c-desliza" tabindex="0" aria-label="Los secretos y sus pistas">
     <p class="c-intro" id="c-intro"></p>
     <ol class="lista" id="lista"></ol>
     <p class="c-fuentes">Letras: Instrument Serif e IBM Plex Mono. Jeroglíficos: Noto Sans Egyptian Hieroglyphs (todas, OFL). El friso, el gato y las escenas están dibujados por código.</p>
@@ -72,6 +75,7 @@
     <div class="c-pie">
       <button type="button" id="ver-final" class="c-boton" hidden>Ver el final otra vez</button>
       <button type="button" id="borrar" class="c-boton c-boton-tenue">Borrar progreso</button>
+    </div>
     </div>
   </aside>
 
@@ -88,10 +92,10 @@
   <div class="aviso" id="aviso" role="status"></div>
   <button class="saltar" id="saltar" type="button">Saltar <kbd>Esc</kbd></button>
 
-  <div class="intro" id="intro" hidden>
+  <div class="intro" id="intro" hidden role="dialog" aria-modal="true" aria-labelledby="intro-titulo" aria-describedby="intro-txt">
     <div class="intro-caja">
       <canvas class="intro-marca" id="intro-ankh" aria-hidden="true"></canvas>
-      <h2>Aegyptus <em>incognita</em></h2>
+      <h2 id="intro-titulo">Aegyptus <em>incognita</em></h2>
       <p class="intro-sub"><span class="jero">𓆎𓅓𓏏𓊖</span> · La tierra negra</p>
       <p class="intro-txt" id="intro-txt">Este friso sigue el Nilo de Abu Simbel al mar y esconde <span class="n-secretos">diez</span> secretos. Navega, toca, mira de cerca, escribe con el cálamo, teclea… o quédate quieto. Te acompaña un gato negro. Lo que encuentres quedará anotado en el papiro del escriba.</p>
       <button type="button" id="empezar">Navegar el Nilo</button>
@@ -99,7 +103,7 @@
   </div>
 
   <!-- créditos: salen al terminar el final (los diez secretos) -->
-  <div class="creditos" id="creditos" hidden role="dialog" aria-modal="true" aria-labelledby="creditos-nombre">
+  <div class="creditos" id="creditos" hidden role="dialog" aria-modal="true" aria-labelledby="creditos-nombre" tabindex="-1">
     <div class="creditos-caja">
       <p class="creditos-etq">Friso pintado por</p>
       <h2 class="creditos-nombre" id="creditos-nombre"></h2>

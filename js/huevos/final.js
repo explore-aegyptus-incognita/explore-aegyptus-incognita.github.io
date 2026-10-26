@@ -28,7 +28,11 @@
           pie: '𓋹𓍑𓋴 · vida, prosperidad y salud'
         },
         inicio: function () { raiz.classList.add('final-activo'); if (G) G.ocultar(true); AE.sonido.tocar('final'); },
-        cuadro: function (t) { X.hora(t, 0, 2000, null, 6.6); if (t > 6000) raiz.classList.add('completo'); },
+        cuadro: function (t) {
+          X.hora(t, 0, 2000, null, 6.6); if (t > 6000) raiz.classList.add('completo');
+          // el gato, que ha hecho el viaje en la barca, vuelve a su sitio fundiéndose (antes aparecía de golpe al acabar)
+          if (G && t > 16800) { if (G.oculto) G.ocultar(false); G.alfa = U.tramo(t, 16800, 18400); }
+        },
         frente: function (ctx, t) {
           var s = E.u, a = U.meseta(t, 0, 900, 17000, 18400);
           ctx.fillStyle = U.rgba([249, 234, 202], 0.55 * a); ctx.fillRect(0, 0, E.W, E.sy(N.SUELO));
@@ -58,7 +62,7 @@
           FX.halo(bx, byb - s * 0.2, s * 0.12, [255, 214, 120], 0.35 * (1 - Math.abs(kb - 0.5) * 2));
         },
         sinBarcas: true,   // (la única barca, la del sol)
-        fin: function () { raiz.classList.remove('final-activo'); X.soltarHora(); if (G) G.ocultar(false); }
+        fin: function () { raiz.classList.remove('final-activo'); X.soltarHora(); if (G) { G.ocultar(false); G.alfa = 1; } }
       };
     }
   });

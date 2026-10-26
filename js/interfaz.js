@@ -30,6 +30,8 @@
   function cargar() { try { var s = localStorage.getItem(CLAVE); if (s) { var o = JSON.parse(s); for (var k in o) estado[k] = o[k]; } } catch (e) { /* sin almacenamiento */ } }
   function guardar() { try { localStorage.setItem(CLAVE, JSON.stringify(estado)); } catch (e) { /* sin almacenamiento */ } }
   function cuantos() { return huevos.filter(function (h) { return estado.hallados[h.id]; }).length; }
+  // el tipo que se enseña: en una pantalla táctil sin ratón, el de táctil si lo tiene («Miu» se llama tocando al gato)
+  function tipoDe(h) { return h.tipoTactil && tactil && !vistoRaton ? h.tipoTactil : h.tipo; }
 
   /* ---------- disparar un secreto ---------- */
   I.disparar = function (h, datos, op) {
@@ -43,7 +45,7 @@
       var s = h.escena(motor, datos || h.ultimosDatos || null);
       // «Secreto 03 / 10 · Lugar»: se numera solo, así añadir un secreto es solo añadir su archivo
       if (s && s.tarjeta) {
-        if (!s.tarjeta.etiqueta) s.tarjeta.etiqueta = 'Secreto ' + U.dos(h.n) + ' / ' + U.dos(huevos.length) + ' · ' + h.tipo;
+        if (!s.tarjeta.etiqueta) s.tarjeta.etiqueta = 'Secreto ' + U.dos(h.n) + ' / ' + U.dos(huevos.length) + ' · ' + tipoDe(h);
         if (s.tarjeta.jero == null) s.tarjeta.jero = h.jero;
       }
       return s;
@@ -74,15 +76,32 @@
   function mostrarCreditos() {
     var c = $('creditos');
     c.hidden = false; c.classList.remove('saliendo'); void c.offsetWidth; c.classList.add('visible');
-    E.bloqueado = true;
-    setTimeout(function () { var b = $('creditos-enlace'); try { b.focus({ preventScroll: true }); } catch (e) { b.focus(); } }, 2600);
+    E.bloqueado = true; modal(c); enfocar(c);
+    // (los botones salen a los 2,4 s: entonces el foco va a «Seguir explorando»)
+    setTimeout(function () { if (!c.hidden && c.contains(document.activeElement)) enfocar($('creditos-cerrar')); }, 2600);
   }
   function cerrarCreditos() {
     var c = $('creditos'); if (c.hidden) return;
     c.classList.remove('visible'); c.classList.add('saliendo');
-    E.bloqueado = false; E.ultimoInput = E.t;
+    E.bloqueado = false; E.ultimoInput = E.t; modal(null);
     setTimeout(function () { c.hidden = true; c.classList.remove('saliendo'); }, 650);
+    enfocar($('b-cuaderno'));
   }
+
+  /* ---------- foco y diálogos ----------
+     Mientras un diálogo (la entrada, los créditos) está abierto, lo demás no se puede enfocar ni lo lee un lector de
+     pantalla (inert); al cerrarlo, vuelve como estaba. El papiro tiene su propio inert mientras está cerrado (antes, con el
+     teclado, el foco pasaba por sus botones, fuera de la pantalla) */
+  var inertes = [];
+  function modal(dialogo) {
+    inertes.forEach(function (e) { e.removeAttribute('inert'); }); inertes = [];
+    if (!dialogo) return;
+    Array.prototype.forEach.call(document.body.children, function (e) {
+      if (e === dialogo || e.tagName === 'SCRIPT' || e.hasAttribute('inert')) return;
+      e.setAttribute('inert', ''); inertes.push(e);
+    });
+  }
+  function enfocar(e) { if (!e) return; try { e.focus({ preventScroll: true }); } catch (err) { e.focus(); } }
   I.mostrarCreditos = mostrarCreditos;
 
   /* ---------- tarjeta ----------
@@ -119,8 +138,11 @@
     ta.classList.remove('desborda', 'al-final', 'apretada'); cu.style.maxHeight = ''; tj.style.fontSize = '';
     var techo, suelo;   // (px desde arriba: hasta dónde puede subir y dónde acaba)
     if (centrado) {
-      var bajoFriso = E.y0 + E.u;
-      techo = Math.round(E.H - bajoFriso >= 150 ? bajoFriso + 8 : Math.max(E.sy(N.CEN1) + 4, E.H - 210));
+      // debajo del friso si caben 150 px; si no, desde la cenefa de zigzag; y si ni así caben 170 (un móvil con las barras
+      // de Safari), también sobre el río, hasta 230 px (las escenas no pasan en el río; la viñeta de Eratóstenes, que en
+      // una pantalla estrecha iba ahí, sube arriba)
+      var bajoFriso = E.y0 + E.u, desdeCenefa = Math.max(E.sy(N.CEN1) + 4, E.H - 210);
+      techo = Math.round(E.H - bajoFriso >= 150 ? bajoFriso + 8 : E.H - 12 - desdeCenefa >= 170 ? desdeCenefa : Math.max(E.sy(N.RIO0) + 4, E.H - 12 - 230));
       ta.style.setProperty('--tarjeta-arriba', techo + 'px');
       suelo = E.H - 12;
       // (muy poco sitio, como un móvil de pie con las barras del navegador: fuera la fila de jeroglíficos, que es adorno,
@@ -200,13 +222,19 @@
 
   /* ---------- el papiro de los secretos ---------- */
   function abrirCuaderno() {
-    $('cuaderno').classList.add('abierto'); $('cuaderno').setAttribute('aria-hidden', 'false');
+    var cu = $('cuaderno'); cu.removeAttribute('inert');
+    cu.classList.add('abierto'); cu.setAttribute('aria-hidden', 'false');
     $('b-cuaderno').setAttribute('aria-expanded', 'true'); raiz.classList.add('cuaderno-abierto');
+    marcarFinal(); enfocar($('cerrar-cuaderno'));
   }
   function cerrarCuaderno() {
-    $('cuaderno').classList.remove('abierto'); $('cuaderno').setAttribute('aria-hidden', 'true');
+    var cu = $('cuaderno'), dentro = cu.contains(document.activeElement);
+    cu.classList.remove('abierto'); cu.setAttribute('aria-hidden', 'true'); cu.setAttribute('inert', '');
     $('b-cuaderno').setAttribute('aria-expanded', 'false'); raiz.classList.remove('cuaderno-abierto');
+    if (dentro) enfocar($('b-cuaderno'));   // (el foco no se queda en un panel que ya no se ve)
   }
+  // la lista se desplaza entera (con la nota de las fuentes y los botones del final); abajo se funde mientras queda más
+  function marcarFinal() { var d = $('c-desliza'); d.classList.toggle('al-final', d.scrollTop + d.clientHeight >= d.scrollHeight - 4); }
   I.abrirCuaderno = abrirCuaderno; I.cerrarCuaderno = cerrarCuaderno;
   I.cuadernoAbierto = function () { return $('cuaderno').classList.contains('abierto'); };
 
@@ -216,6 +244,23 @@
   }
   function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
 
+  // «Leer»: el texto de la tarjeta de un secreto encontrado, para volver a leerlo sin repetir la escena. Se saca de la escena
+  // la primera vez que se abre (sin ponerla en marcha: solo se crea el objeto)
+  function leer(h) {
+    var d = el('details', 'e-leer'), su = el('summary', '', 'Leer'), cuerpo = el('div', 'e-leer-txt');
+    d.appendChild(su); d.appendChild(cuerpo);
+    d.addEventListener('toggle', function () {
+      if (!d.open || cuerpo.childNodes.length) { marcarFinal(); return; }
+      var t = null; try { var sc = h.escena(E, h.ultimosDatos || null); t = sc && sc.tarjeta; } catch (e) { console.error(e); }
+      var v = function (x) { return typeof x === 'function' ? x() : (x || ''); };
+      if (!t) { cuerpo.textContent = '…'; return; }
+      var p = el('p'); p.innerHTML = v(t.texto); cuerpo.appendChild(p);
+      if (t.pie) cuerpo.appendChild(el('div', 'e-leer-pie', v(t.pie)));
+      marcarFinal();
+    });
+    return d;
+  }
+
   function pintarLista(recien) {
     var ol = $('lista'); ol.innerHTML = '';
     huevos.forEach(function (h) {
@@ -223,7 +268,7 @@
       var li = el('li', 'entrada' + (ok ? ' hallada' : '') + (recien === h.id ? ' nueva' : ''));
       var num = el('div', 'e-num', I.numero(h.n)); num.setAttribute('aria-label', String(h.n)); li.appendChild(num);
       var c = el('div', 'e-cuerpo');
-      c.appendChild(el('div', 'e-tipo', h.tipo));
+      c.appendChild(el('div', 'e-tipo', tipoDe(h)));
       var nom = el('div', 'e-nombre');
       if (ok) { nom.textContent = h.nombre; if (h.jero) nom.appendChild(el('small', '', h.jero)); }
       else { var cen = el('span', 'e-censura'); cen.style.width = (h.nombre.length * 0.48 + 0.6) + 'em'; nom.appendChild(cen); nom.setAttribute('aria-label', 'Sin descubrir'); }
@@ -236,11 +281,13 @@
         b.type = 'button';
         b.addEventListener('click', function () { I.disparar(h, null, { prueba: !ok }); });
         meta.appendChild(b); c.appendChild(meta);
+        c.appendChild(leer(h));
       }
       li.appendChild(c); ol.appendChild(li);
     });
     var n = cuantos();
     $('contador').textContent = U.dos(n) + '/' + U.dos(huevos.length);
+    $('b-cuaderno').setAttribute('aria-label', 'Secretos: ' + n + ' de ' + huevos.length);   // (antes se leía «𓏞 Secretos05/10»)
     var seg = $('segmentos'); seg.innerHTML = ''; seg.style.gridTemplateColumns = 'repeat(' + huevos.length + ', 1fr)';
     for (var i = 0; i < huevos.length; i++) seg.appendChild(el('i', i < n ? 'si' : ''));
     $('ver-final').hidden = !(estado.final || cuantos() === huevos.length || (PRUEBA && final));   // (con los diez, siempre a mano)
@@ -248,6 +295,7 @@
     raiz.classList.toggle('completo', !!estado.final);
     var palabra = I.palabra(huevos.length);
     $('c-intro').textContent = palabra.charAt(0).toUpperCase() + palabra.slice(1) + ' secretos a lo largo del Nilo. Cada pista apunta a uno; el nombre aparece cuando lo encuentras.';
+    marcarFinal();
   }
 
   /* ---------- instrumentos y mapa ---------- */
@@ -293,6 +341,7 @@
     var total = E.largo * E.u, m = $('mapa'), w = m.clientWidth, v = $('mapa-ventana');
     var izq = E.camX / total * w, ancho = Math.max(6, E.W / total * w);
     v.style.left = izq + 'px'; v.style.width = ancho + 'px';
+    if (AE.nilo) { var pc = String(Math.round(E.centroXu() / E.largo * 100)); if (ultimos.mapaPc !== pc) { ultimos.mapaPc = pc; m.setAttribute('aria-valuenow', pc); } var lu = AE.nilo.lugarEn(E.centroXu()); if (ultimos.mapaLugar !== lu) { ultimos.mapaLugar = lu; m.setAttribute('aria-valuetext', lu); } }
     if (idMapa === null || !AE.nilo) return;
     var nom = $('mapa-nombre'); texto('mapa-nombre', AE.nilo.lugarEn(E.centroXu()));
     var r = m.getBoundingClientRect(), mitad = nom.offsetWidth / 2;
@@ -313,7 +362,12 @@
       st.setProperty('--motivos', Math.round(H - E.sy((N.CEN1 + 1) / 2)) + 'px');   // (la línea de los ojos de Horus y escarabajos)
       st.setProperty('--rio1', Math.round(H - E.sy(N.RIO1)) + 'px');
     }
-    raiz.classList.toggle('friso-centrado', H - (E.y0 + E.u) >= 90);
+    // el friso centrado: un móvil de pie (siempre, aunque quede poco papiro debajo, como con las barras de Safari) o una
+    // pantalla mucho más alta que el friso. Con menos de 150 px debajo, los instrumentos van en la franja de motivos
+    var libre = H - (E.y0 + E.u), movil = E.W <= 700 && H > E.W;
+    st.setProperty('--libre', Math.round(libre) + 'px');
+    raiz.classList.toggle('friso-centrado', libre >= 90 || movil);
+    raiz.classList.toggle('hud-en-franja', movil && H >= 501 && libre < 150);
     medirHud();
     montarMapa();
     if (tarjetaVisible) colocarTarjeta();
@@ -395,6 +449,7 @@
       h.detectar && h.detectar({
         motor: E, en: E.en,
         capa: function (fn) { E.capas.push(fn); },
+        brillo: function (fn) { E.capasBrillo.push(fn); },   // (lo que da luz, sin tinte: en la capa de brillo, a media resolución)
         hallado: function () { return !!estado.hallados[h.id]; },
         disparar: function (datos) { return I.disparar(h, datos); }
       });
@@ -436,6 +491,7 @@
     window.addEventListener('pointerup', soltarMapa); window.addEventListener('pointercancel', soltarMapa);
     mapa.addEventListener('lostpointercapture', soltarMapa);
 
+    $('c-desliza').addEventListener('scroll', marcarFinal, { passive: true });
     $('b-cuaderno').addEventListener('click', function () { $('cuaderno').classList.contains('abierto') ? cerrarCuaderno() : abrirCuaderno(); });
     $('cerrar-cuaderno').addEventListener('click', cerrarCuaderno);
     $('saltar').addEventListener('click', function () { E.saltar(); });
@@ -456,11 +512,11 @@
 
     var intro = $('intro');
     if (!estado.introVista && !PRUEBA) {
-      intro.hidden = false; E.bloqueado = true; pintarAnkh();
+      intro.hidden = false; E.bloqueado = true; pintarAnkh(); modal(intro);
       if (AE.nilo) AE.nilo.prepararAmanecer();
       $('empezar').addEventListener('click', function () {
         estado.introVista = true; guardar();
-        intro.classList.add('saliendo'); E.bloqueado = false; E.ultimoInput = E.t;
+        intro.classList.add('saliendo'); E.bloqueado = false; E.ultimoInput = E.t; modal(null);
         E.emitir('empezar');   // amanece sobre Abu Simbel
         setTimeout(function () { intro.hidden = true; }, 900);
       });

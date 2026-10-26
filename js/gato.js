@@ -32,6 +32,9 @@
   G.soltar = function () { G.forzado = null; G.quietoMs = 0; };
   G.ocultar = function (si) { G.oculto = si !== false; };
   G.despertar = function () { if (G.estado === 'dormir' || G.estado === 'tumbado') cambiar('sentado'); G.quietoMs = 0; };
+  // al tocarlo: se despierta, levanta las orejas y te mira un momento (en el móvil no hay ratón al que mirar)
+  G.responder = function () { G.despertar(); G.atento = E.t + 1100; };
+  G.alfa = 1;   // (el final lo funde al volver)
 
   // de paso tranquilo (0) a trote (1), según lo deprisa que va
   function velMarcha() { return U.clamp((Math.abs(G.v) - VPASO * 0.5) / (VMAX - VPASO * 0.5), 0, 1); }
@@ -115,6 +118,7 @@
       var dx = (p.x - x) * G.dir, dy = (G.y() - alto() * 0.75) - p.y, dist = Math.hypot(dx, dy);
       if (dist < s * 0.6 && dx > -s * 0.05) { mObj = U.clamp(Math.atan2(dy, Math.max(20, dx)), -0.45, 0.7); oObj = 1; }
     }
+    if (E.t < (G.atento || 0)) { mObj = 0.4; oObj = 1; }
     G.mirada += (mObj - G.mirada) * (1 - Math.exp(-dt / 160));
     G.orejas += (oObj - G.orejas) * (1 - Math.exp(-dt / 220));
     var ciclo = (E.t % 4300) / 4300; G.parpadeo = G.estado === 'dormir' ? 1 : ciclo > 0.955 ? Math.sin((ciclo - 0.955) / 0.045 * Math.PI) : 0;
@@ -144,9 +148,13 @@
 
   /* ---------- dibujar ---------- */
   G.dibujar = function (ctx) {
-    if (G.oculto) return;
+    if (G.oculto || G.alfa <= 0.01) return;
     var x = G.x(), y = G.y(), h = alto();
     if (x < -h * 2 || x > E.W + h * 2) return;
+    ctx.save(); ctx.globalAlpha *= G.alfa;
+    try { dibujarGato(ctx, x, y, h); } finally { ctx.restore(); }
+  };
+  function dibujarGato(ctx, x, y, h) {
     // la sombra en el suelo
     ctx.fillStyle = 'rgba(40,24,8,0.16)'; ctx.beginPath(); ctx.ellipse(x, G.y() + h * 0.02, h * 0.42, h * 0.05, 0, 0, TAU); ctx.fill();
     var g = AE.gato, pose = poseActual();

@@ -50,11 +50,15 @@
         frente: function (ctx, t) {
           var z = hueco(); if (!z) return;
           var s = E.u, pr = N.pieza('procesion'), d = AE.arte.procesion;
-          var rev = U.inOut(U.tramo(t, 2200, 6200));
-          // en el muro: la figura vuelve poco a poco, con polvo de oro
+          // en el muro: la figura vuelve poco a poco, con polvo de oro; y al acabar la escena se vuelve a borrar despacio
+          // (la escena dura lo que se tarda en leer la tarjeta: antes seguía entera hasta el final y desaparecía de golpe)
+          var rev = U.inOut(U.tramo(t, 2200, 6200)) * X.salida(t, 2200);
           if (d && pr) { ctx.save(); d.dibujar(ctx, E.sx(pr.xu), E.sy(N.SUELO + (pr.dy || 0)), s, { revelar: rev }); ctx.restore(); }
           X.polvo(ctx, z.x, z.y, z.h * 0.7, 16, U.meseta(t, 1800, 2800, 7000, 9000), t, 11);
-          // y en grande, en una viñeta: la procesión con Hatshepsut en el centro, y su nombre de trono en un cartucho
+        },
+        // y en grande, en una viñeta (sin tinte): la procesión con Hatshepsut en el centro, y su nombre de trono en un cartucho
+        luz: function (ctx, t) {
+          var s = E.u, d = AE.arte.procesion, rev = U.inOut(U.tramo(t, 2200, 6200));
           var kp = U.meseta(t, 3200, 4200, 13800, 14900); if (kp <= 0 || !d) return;
           var pw = Math.min(E.W * 0.44, s * 0.8), ph = s * 0.32, px = E.W - pw - s * 0.06, py = E.sy(0.1);
           X.panel(ctx, px, py, pw, ph, kp, function (x0, y0, w, h) {

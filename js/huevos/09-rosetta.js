@@ -8,6 +8,7 @@
   var CARTUCHO = { dx: 0, dy: -0.205, w: 0.105, h: 0.042 };
   function cartucho() { return N.zona('piedraRosetta', 'cartucho', CARTUCHO); }
   var LETRAS = ['p', 't', 'o', 'l', 'm', 'i', 's'];
+  var SIGNOS = Array.from('𓊪𓏏𓍯𓃭𓐝𓇌𓋴');   // (Q3 p, X1 t, V4 wꜣ (o), E23 l, Aa15 m, M17a i, S29 s)
   AE.registrar({
     id: 'rosetta', n: 9, nombre: '«Je tiens l’affaire!»', jero: '𓍹𓊪𓏏𓍯𓃭𓐝𓇌𓋴𓍺', tipo: 'Gesto',
     pista: 'En una piedra oscura, el nombre de un rey va dentro de un óvalo. Rodéalo tú también.',
@@ -42,32 +43,43 @@
           ctx.save(); ctx.globalAlpha = ko; ctx.lineWidth = Math.max(2, s * 0.004); ctx.strokeStyle = ES.oro(ctx, z.x - z.w, z.y, z.x + z.w, z.y, 0.4);
           ctx.beginPath(); ctx.ellipse(z.x, z.y, z.w * 0.62, z.h * 0.85, 0, 0, TAU); ctx.stroke(); ctx.restore();
           FX.halo(z.x, z.y, z.w * 0.8, [255, 220, 140], 0.4 * ko);
-          // la viñeta: el cartucho en grande, cada signo con su sonido
-          var kp = U.meseta(t, 1400, 2400, 16600, 17800); if (kp <= 0) return;
-          var pw = Math.min(E.W * 0.56, s * 1.0), ph = s * 0.3, px = E.W * 0.5 - pw / 2, py = E.sy(0.08);
-          X.panel(ctx, px, py, pw, ph, kp, function (x0, y0, w, h) {
-            ctx.fillStyle = ES.lin(ctx, 0, y0, 0, y0 + h, [[0, [70, 66, 74]], [1, [40, 37, 44]]]); ctx.fillRect(x0, y0, w, h);
-            var tam = h * 0.3, cx = x0 + w / 2, cy = y0 + h * 0.36;
-            var caja = X.cartucho(ctx, '𓊪𓏏𓍯𓃭𓐝𓇌𓋴', cx, cy, tam, 1, [240, 232, 214], 1);
-            // los sonidos, uno tras otro, debajo de cada signo
-            var sg = Array.from('𓊪𓏏𓍯𓃭𓐝𓇌𓋴'); ctx.font = Math.round(tam) + 'px ' + ES.JERO;
-            var xx = caja.x + tam * 0.35;
-            for (var i = 0; i < sg.length; i++) {
-              var wi = ctx.measureText(sg[i]).width, ki = U.tramo(t, 3000 + i * 520, 3400 + i * 520);
-              if (ki > 0) { FX.halo(xx + wi / 2, cy, tam * 0.7, [255, 220, 140], 0.5 * ki * (1 - U.tramo(t, 3500 + i * 520, 4400 + i * 520))); FX.texto(LETRAS[i].toUpperCase(), xx + wi / 2, cy + tam * 1.05, { serif: true, tam: tam * 0.55, alin: 'center', color: [255, 228, 160], a: ki * kp }); }
-              xx += wi + tam * 0.08;
-            }
-            // y el nombre en griego, que se enciende al final
-            var kg = U.tramo(t, 7000, 7800);
-            FX.texto('ΠΤΟΛΕΜΑΙΟΣ', cx, y0 + h * 0.86, { serif: true, tam: h * 0.13, alin: 'center', color: [255, 228, 160], a: kg * kp, espaciado: 4 });
-          });
           // Champollion pasa corriendo con sus papeles
           var ch = AE.arte.champollion, kc = U.tramo(t, 7600, 8200) * (1 - U.tramo(t, 15800, 16600));
           if (ch && kc > 0) {
             var cxp = U.lerp(-s * 0.2, E.W * 0.38, U.sale(U.tramo(t, 7600, 9600)));
             ctx.save(); ctx.globalAlpha = kc; ch.dibujar(ctx, cxp, E.sy(N.SUELO), s, { t: t, corre: t < 9600 }); ctx.restore();
           }
-          if (t > 9000) FX.texto('«Je tiens l’affaire!»', E.W * 0.5, py + ph + s * 0.05, { serif: true, cursiva: true, tam: Math.max(20, s * 0.034), alin: 'center', a: U.tramo(t, 9000, 9800) * kp, color: P.tinta });
+        },
+        // la viñeta, sin el tinte de la noche (Alejandría es de noche: con él, el oro salía gris y la frase no se leía): el
+        // cartucho en grande, cada signo con su sonido, el nombre en griego y, al final, lo que gritó Champollion
+        luz: function (ctx, t) {
+          var kp = U.meseta(t, 1400, 2400, 16600, 17800); if (kp <= 0) return;
+          var s = E.u, estrecha = E.W < 700;
+          var pw = estrecha ? E.W - s * 0.08 : Math.min(E.W * 0.56, s * 1.0), ph = s * 0.34, px = E.W * 0.5 - pw / 2, py = E.sy(0.045);
+          X.panel(ctx, px, py, pw, ph, kp, function (x0, y0, w, h) {
+            ctx.fillStyle = ES.lin(ctx, 0, y0, 0, y0 + h, [[0, [70, 66, 74]], [1, [40, 37, 44]]]); ctx.fillRect(x0, y0, w, h);
+            // el tamaño de los signos: el que quepa a lo ancho (en un móvil, el cartucho entero se salía de la viñeta).
+            // Se miden todos antes de escribir nada: FX.texto cambia la letra del lienzo, y medir después de un rótulo
+            // daba los anchos de la letra romana (las letras de PTOLMIS se iban desplazando)
+            ctx.font = '100px ' + ES.JERO;
+            var anchos = SIGNOS.map(function (g) { return ctx.measureText(g).width / 100; });
+            var suma = anchos.reduce(function (a, b) { return a + b; }, 0) + SIGNOS.length * 0.08 + 0.7;
+            var tam = Math.round(Math.min(h * 0.21, w * 0.9 / suma)), cx = x0 + w / 2, cy = y0 + h * 0.25;
+            X.cartucho(ctx, SIGNOS.join(''), cx, cy, tam, 1, [240, 232, 214], 1);
+            // los sonidos, uno tras otro, debajo de cada signo (los centros, como los pone X.fila)
+            var total = anchos.reduce(function (a, b) { return a + b; }, 0) * tam + (SIGNOS.length - 1) * tam * 0.08, xx = cx - total / 2;
+            for (var i = 0; i < SIGNOS.length; i++) {
+              var wi = anchos[i] * tam, ki = U.tramo(t, 3000 + i * 520, 3400 + i * 520);
+              if (ki > 0) {
+                FX.halo(xx + wi / 2, cy, tam * 0.7, [255, 220, 140], 0.5 * ki * (1 - U.tramo(t, 3500 + i * 520, 4400 + i * 520)));
+                FX.texto(LETRAS[i].toUpperCase(), xx + wi / 2, y0 + h * 0.5, { serif: true, tam: Math.min(h * 0.1, tam * 0.52), alin: 'center', color: [255, 228, 160], a: ki * kp });
+              }
+              xx += wi + tam * 0.08;
+            }
+            // el nombre en griego, que se enciende al final, y lo que gritó Champollion al pasar corriendo
+            FX.texto('ΠΤΟΛΕΜΑΙΟΣ', cx, y0 + h * 0.68, { serif: true, tam: Math.min(h * 0.11, w * 0.09), alin: 'center', color: [255, 228, 160], a: U.tramo(t, 7000, 7800) * kp, espaciado: 4 });
+            if (t > 9000) FX.texto('«Je tiens l’affaire!»', cx, y0 + h * 0.87, { serif: true, cursiva: true, tam: Math.min(h * 0.11, w * 0.085), alin: 'center', a: U.tramo(t, 9000, 9800) * kp, color: [252, 244, 226] });
+          });
         },
         fin: function () { if (G) G.soltar(); }
       };

@@ -15,6 +15,9 @@
     AE.nilo.horaForzada = ((U.lerp(a, b, k) % 24) + 24) % 24;
   };
   X.soltarHora = function () { AE.nilo.soltarHora(); };   // (vuelve a la del sitio en 1,8 s, sin saltos)
+  // lo que queda de una escena hasta que acaba de verdad (1 → 0 en los últimos «ms»): la tarjeta alarga la escena lo que se
+  // tarda en leerla, así que lo que dura hasta el final (el faro, Hatshepsut, el escalón) se funde con esto y no de golpe
+  X.salida = function (t, ms) { var e = E.escena, d = e ? e.dur : 0; return d ? 1 - U.inOut(U.tramo(t, d - (ms || 1600), d)) : 1; };
   // lo que tapa una escena en este fotograma (para que las estrellas y la luna no se pinten encima): px de pantalla
   X.tapar = function (x, y, w, h) { var N = AE.nilo; if (N && N.tapasEscena) N.tapasEscena.push({ x: x, y: y, w: w, h: h }); };
 

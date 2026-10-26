@@ -82,7 +82,7 @@
     viento: 0, senal: 0,
     escena: null, bloqueado: false, ligero: false, lectura: 5000,
     ultimoInput: 0, calamo: true,  // en móvil se puede cambiar a «mover»
-    oyentes: {}, capas: []
+    oyentes: {}, capas: [], capasBrillo: []
   };
   var cv, ctx, raf = window.requestAnimationFrame.bind(window), ultimoRaf = null, congelado = false, cam = null, mediaDt = 16, mediaCoste = 4, nMedidos = 0;
   /* Las capas, de abajo arriba (para que vaya fluido en Safari, lo grande y quieto lo mueve la GPU y en cada fotograma
@@ -95,8 +95,12 @@
      · el lienzo del motor (transparente): lo que se mueve (el gato, la vida, las escenas, la tinta del cálamo).
      · delante: los papiros y lotos de primer plano, en teselas (p = 1,12).
      · tinte del mundo: otro <div> que multiplica, más suave.
-     · brillo: lo que da luz por encima de todo (las estrellas, la luna, el fuego del faro), a media resolución. */
-  var cvCielo, ctxCielo, cvBrillo, ctxBrillo, tinteFondo, tinteMundo;
+     · brillo: lo que da luz por encima de todo (las estrellas, la luna, el fuego del faro), a media resolución.
+     · luz: lo que una escena enseña de cerca (las viñetas, las lupas, los rótulos y las frases), sin tinte, como la
+       tarjeta. Solo se ve durante las escenas que lo usan (s.luz): de noche, con el tinte, el oro salía gris y las frases
+       no se leían. */
+  var cvCielo, ctxCielo, cvBrillo, ctxBrillo, tinteFondo, tinteMundo, cvLuz, ctxLuz, luzVista = false;
+  var ctxFX = null;   // (mientras se pinta la luz, los efectos FX van a su lienzo)
   E.ESC_CIELO = 0.5; E.ESC_BRILLO = 0.5;
 
   E.en = function (n, fn) { (E.oyentes[n] = E.oyentes[n] || []).push(fn); };
@@ -124,7 +128,11 @@
     var centro = E.u ? E.centroXu() : 0;
     // la unidad es el alto de la pantalla, salvo en pantallas estrechas (un móvil de pie): ahí manda el ancho, para que se
     // vea un buen trozo de friso; arriba y abajo sigue el papiro
-    E.W = w; E.H = h; E.u = Math.min(h, w * 1.25); E.y0 = Math.round((h - E.u) * 0.42);
+    E.W = w; E.H = h; E.u = Math.min(h, w * 1.25);
+    // (en un móvil de pie, al menos 56 px de papiro debajo del friso para la fila del sonido y el mapa: con las barras de
+    // Safari, un iPhone SE deja 553 px de alto y el friso llegaba casi al borde)
+    if (w <= 700 && h > w) E.u = Math.min(E.u, h - 97);
+    E.y0 = Math.round((h - E.u) * 0.42);
     E.dpr = E.ligero ? 1 : Math.min(window.devicePixelRatio || 1, 2);
     cv.width = Math.round(w * E.dpr); cv.height = Math.round(h * E.dpr);
     cv.style.width = w + 'px'; cv.style.height = h + 'px';
@@ -299,7 +307,7 @@
   E.FUENTES = FONDOS;
   var FX = AE.fx = {
     texto: function (s, x, y, op) {
-      op = op || {}; var k = op.ctx || ctx;
+      op = op || {}; var k = op.ctx || ctxFX || ctx;
       var fam = op.jero ? FONDOS.jero : op.serif ? FONDOS.serif : FONDOS.mono;
       k.font = (op.cursiva ? 'italic ' : '') + (op.peso || 400) + ' ' + (op.tam || 11) + 'px ' + fam;
       k.textAlign = op.alin || 'left'; k.textBaseline = op.base || 'middle';
@@ -309,7 +317,7 @@
       if ('letterSpacing' in k) k.letterSpacing = '0px';
     },
     brillo: function (x, y, r, col, a, k) {
-      k = k || ctx; if (a <= 0.003 || r <= 0) return;
+      k = k || ctxFX || ctx; if (a <= 0.003 || r <= 0) return;
       var g = k.createRadialGradient(x, y, 0, x, y, r);
       g.addColorStop(0, U.rgba(col, a)); g.addColorStop(1, U.rgba(col, 0));
       k.fillStyle = g; k.beginPath(); k.arc(x, y, r, 0, TAU); k.fill();
@@ -329,7 +337,7 @@
   FX.halo = function (x, y, r, col, a, c2) {   // (c2: otro contexto donde dibujar; si no, el del motor)
     if (r <= 0.5) return;
     var px = r * E.dpr, s = px < 10 ? 24 : px < 30 ? 48 : px < 80 ? 96 : 192;
-    var h = spriteHalo(col, s), k = c2 || ctx;
+    var h = spriteHalo(col, s), k = c2 || ctxFX || ctx;
     if (a <= 0.003) return;
     var antes = k.globalAlpha; k.globalAlpha = U.clamp(a, 0, 1) * antes; k.drawImage(h, x - r, y - r, r * 2, r * 2); k.globalAlpha = antes;
   };
@@ -410,8 +418,23 @@
     seguro(s && s.frente, ctx, t); seguro(N && N.encima, ctx); seguro(s && s.encima, ctx, t);
     ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
     dibujarDestellos();
+    // la luz de la escena va antes del brillo: sus viñetas apuntan lo que tapan (N.tapasEscena) y las estrellas y la luna
+    // se apartan en este mismo fotograma
+    dibujarLuz(s, t);
     seguro(N && N.brillo, ctxBrillo); seguro(s && s.brillo, ctxBrillo, t);
+    if (!s) for (var j = 0; j < E.capasBrillo.length; j++) { try { E.capasBrillo[j](ctxBrillo, E.t); } catch (err) { console.error(err); } }
     // (la viñeta y el grano son CSS: los compone la GPU y no cuestan nada al lienzo)
+  }
+
+  // el lienzo de la luz: se crea con su tamaño la primera vez que una escena lo pide y, sin escena que lo use, se esconde
+  function dibujarLuz(s, t) {
+    var quiere = !!(s && s.luz);
+    if (!quiere && !luzVista) return;
+    if (quiere && (cvLuz.width !== cv.width || cvLuz.height !== cv.height)) { cvLuz.width = cv.width; cvLuz.height = cv.height; }
+    ctxLuz.setTransform(1, 0, 0, 1, 0, 0); ctxLuz.globalAlpha = 1; ctxLuz.globalCompositeOperation = 'source-over';
+    ctxLuz.clearRect(0, 0, cvLuz.width, cvLuz.height);
+    if (quiere) { ctxLuz.setTransform(E.dpr, 0, 0, E.dpr, 0, 0); ctxFX = ctxLuz; seguro(s.luz, ctxLuz, t); ctxFX = null; }
+    if (quiere !== luzVista) { luzVista = quiere; cvLuz.style.display = quiere ? 'block' : 'none'; }
   }
 
   // una llamada de dibujo protegida: si falla, se apunta y el contexto vuelve a como estaba (un fallo no congela la web)
@@ -630,7 +653,8 @@
     E.capaDelante = capa('capa-delante', tras, true);
     tinteMundo = capa('tinte tinte-mundo', tras, true);
     cvBrillo = capa('capa-brillo', tras); ctxBrillo = cvBrillo.getContext('2d');
-    E.ctxCielo = ctxCielo; E.ctxBrillo = ctxBrillo; E.lienzoCielo = cvCielo; E.lienzoBrillo = cvBrillo; E.lienzoTinta = tinta;
+    cvLuz = capa('capa-luz', tras); ctxLuz = cvLuz.getContext('2d'); cvLuz.width = 1; cvLuz.height = 1; cvLuz.style.display = 'none';
+    E.ctxCielo = ctxCielo; E.ctxBrillo = ctxBrillo; E.lienzoCielo = cvCielo; E.lienzoBrillo = cvBrillo; E.lienzoTinta = tinta; E.lienzoLuz = cvLuz;
     E.tinte('fondo', ''); E.tinte('mundo', '');
     medir();
     window.addEventListener('resize', medir);
